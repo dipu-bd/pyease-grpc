@@ -13,8 +13,10 @@ with open('requirements.txt', 'r', encoding='utf-8') as fp:
         if s.split('#')[0].strip()
     ]
 
-with open(os.path.join(os.path.dirname(__file__), 'pyease_grpc', '__init__.py')) as fp:
-    VERSION = re.match(r'__version__\s+=\s+["\'](.*?)["\']', fp.read(), re.S).group(1)
+curdir = os.path.dirname(__file__)
+with open(os.path.join(curdir, 'pyease_grpc', '__init__.py')) as fp:
+    VERSION = re.findall(r"__version__\s+=\s+'([^']+)'", fp.read())[0]
+print(VERSION)
 
 setup(
     version=VERSION,

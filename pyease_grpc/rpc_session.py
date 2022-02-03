@@ -30,7 +30,10 @@ class RpcSession(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self._session.close()
 
-    def request(self, uri: Union[str, RpcUri], data: dict, opt: Optional[RequestOptions] = None) -> RpcResponse:
+    def request(self,
+                uri: Union[str, RpcUri],
+                data: dict,
+                opt: Optional[RequestOptions] = None) -> RpcResponse:
         """Make gRPC-web request.
 
         Args:
@@ -58,7 +61,8 @@ class RpcSession(object):
 
         opt = opt or RequestOptions()
         if opt.timeout is not None:
-            opt.metadata['grpc-timeout'] = protocol.serialize_timeout(opt.timeout)
+            grpc_timeout = protocol.serialize_timeout(opt.timeout)
+            opt.metadata['grpc-timeout'] = grpc_timeout
 
         message = method.serialize_request(data)
         message = protocol.wrap_message(message)

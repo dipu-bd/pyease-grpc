@@ -20,7 +20,9 @@ def _unpack_header(message: bytes) -> Tuple[bool, bool, int]:
     return trailer, compressed, length
 
 
-def wrap_message(message: bytes, trailer: bool = False, compressed: bool = False) -> bytes:
+def wrap_message(message: bytes,
+                 trailer: bool = False,
+                 compressed: bool = False) -> bytes:
     header = _pack_header(trailer, compressed, len(message))
     return header + message
 
@@ -33,7 +35,8 @@ def unwrap_message(message: bytes) -> Tuple[bytes, bool, bool]:
     return data, trailer, compressed
 
 
-def unwrap_message_stream(stream: IO[bytes]) -> Generator[Tuple[bytes, bool, bool], None, None]:
+def unwrap_message_stream(stream: IO[bytes]) \
+        -> Generator[Tuple[bytes, bool, bool], None, None]:
     trailer = None
     while not trailer:
         header = stream.read(_HEADER_LENGTH)
@@ -46,7 +49,9 @@ def serialize_timeout(seconds: float):
     return f"{int(seconds * 1e9)}n"
 
 
-def serialize_message(message_type: Type[Message], data: dict, ignore_unknown=True) -> bytes:
+def serialize_message(message_type: Type[Message],
+                      data: dict,
+                      ignore_unknown=True) -> bytes:
     message = message_type()
     ParseDict(data, message, ignore_unknown_fields=ignore_unknown)
     return message.SerializeToString()

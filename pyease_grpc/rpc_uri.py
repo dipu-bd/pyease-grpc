@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from .protocol import deserialize_message, serialize_message
-
 
 @dataclass(frozen=True)
 class RpcUri:
@@ -30,4 +28,3 @@ class RpcUri:
         hostname = parsed.hostname or ''
         url = scheme + '://' + hostname
         return cls(url, package, service, method)
- 

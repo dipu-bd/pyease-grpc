@@ -34,7 +34,8 @@ class Protobuf:
         tmpdir = tempfile.mkdtemp(basename)
         os.makedirs(tmpdir, exist_ok=True)
         try:
-            return cls(Protobuf._generate_descriptor(tmpdir, proto_file, root_dir))
+            desc = Protobuf._generate_descriptor(tmpdir, proto_file, root_dir)
+            return cls(desc)
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -80,7 +81,8 @@ class Protobuf:
             for name in fd.message_types_by_name:
                 message = fd.message_types_by_name[name]
                 message_type = reflection.MakeClass(message)
-                self.messages[fd.package + '.' + name] = db.RegisterMessage(message_type)
+                registered = db.RegisterMessage(message_type)
+                self.messages[fd.package + '.' + name] = registered
 
     def _load_services(self):
         self.services: Dict[str, Dict[str, RpcMethod]] = {}
