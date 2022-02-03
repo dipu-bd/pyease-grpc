@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  lint:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip wheel setuptools
+          pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          flake8 --count --show-source --statistics
+
+      - name: Build wheel package
+        run: python setup.py clean bdist_wheel
+
+      - name: Install and test package
+        run: |
+          pip install dist/*.whl
+          mkdir -p github_import_test
+          cd github_import_test && python -c 'import pyease_grpc; print(pyease_grpc.__version__)'
