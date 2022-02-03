@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Type
 
 from google.protobuf.message import Message
@@ -7,13 +6,18 @@ from .protocol import deserialize_message, serialize_message
 from .rpc_uri import RpcUri
 
 
-@dataclass(frozen=True)
 class RpcMethod:
-    package: str
-    service: str
-    method: str
-    request: Type[Message]
-    response: Type[Message]
+    def __init__(self,
+                 package: str,
+                 service: str,
+                 method: str,
+                 request: Type[Message],
+                 response: Type[Message]) -> None:
+        self.package = package
+        self.service = service
+        self.method = method
+        self.request = request
+        self.response = response
 
     def build_url(self, url: str):
         return RpcUri(

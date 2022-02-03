@@ -1,13 +1,15 @@
-from dataclasses import dataclass
+
 from typing import List, Optional
 
 from requests import Response
 
 
-@dataclass(frozen=True)
 class RpcResponse(object):
-    original: Response
-    payloads: List[dict]
+    def __init__(self,
+                 original: Response,
+                 payloads: List[dict]) -> None:
+        self.original = original
+        self.payloads = payloads
 
     @property
     def status_code(self):

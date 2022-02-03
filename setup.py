@@ -16,7 +16,6 @@ with open('requirements.txt', 'r', encoding='utf-8') as fp:
 curdir = os.path.dirname(__file__)
 with open(os.path.join(curdir, 'pyease_grpc', '__init__.py')) as fp:
     VERSION = re.findall(r"__version__\s+=\s+'([^']+)'", fp.read())[0]
-print(VERSION)
 
 setup(
     version=VERSION,

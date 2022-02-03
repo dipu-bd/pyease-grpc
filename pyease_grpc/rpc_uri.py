@@ -1,13 +1,16 @@
-from dataclasses import dataclass
 from urllib.parse import urlparse
 
 
-@dataclass(frozen=True)
 class RpcUri:
-    url: str
-    package: str
-    service: str
-    method: str
+    def __init__(self,
+                 url: str,
+                 package: str,
+                 service: str,
+                 method: str) -> None:
+        self.url = url
+        self.package = package
+        self.service = service
+        self.method = method
 
     def build(self) -> str:
         url = self.url

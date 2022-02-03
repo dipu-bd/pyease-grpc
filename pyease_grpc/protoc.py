@@ -1,6 +1,3 @@
-import importlib
-import importlib.resources
-import importlib.util
 import os
 import shutil
 import tempfile
@@ -52,9 +49,8 @@ class Protobuf:
         proto_file = os.path.abspath(proto_file)
         outfile = os.path.join(outdir, 'descriptor.bin')
 
-        grpc_tool_path = importlib.resources.files('grpc_tools')
-        protoc_file = os.path.abspath(str(grpc_tool_path / 'protoc.py'))
-        proto_include = os.path.abspath(str(grpc_tool_path / '_proto'))
+        protoc_file = find_resource_path('grpc_tools', 'protoc.py')
+        proto_include = find_resource_path('grpc_tools', '_proto')
 
         protoc.main([
             protoc_file,
@@ -97,3 +93,13 @@ class Protobuf:
                         request=self.messages[method.input_type[1:]],
                         response=self.messages[method.output_type[1:]]
                     )
+
+
+def find_resource_path(package, path):
+    try:
+        import importlib.resources
+        files = importlib.resources.files(package)
+        return os.path.abspath(str(files / path))
+    except ImportError:
+        import pkg_resources
+        return pkg_resources.resource_filename(package, path)
