@@ -16,9 +16,8 @@ log = logging.getLogger(__name__)
 class RpcSession(object):
 
     @classmethod
-    def from_descriptor(cls, descriptor_json) -> None:
-        return cls(Protobuf.from_descriptor())
-
+    def from_descriptor(cls, descriptor_json: dict):
+        return cls(Protobuf.restore(descriptor_json))
 
     def __init__(self, proto: Protobuf) -> None:
         """Initialize a new RpcSession.
