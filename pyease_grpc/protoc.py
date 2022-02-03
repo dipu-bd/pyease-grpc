@@ -21,10 +21,10 @@ class Protobuf:
         tmpdir = os.path.abspath(tempfile.mkdtemp(filename))
         os.makedirs(tmpdir, exist_ok=True)
         try:
-            file_path = os.path.join(tmpdir, filename + '.proto')
-            with open(file_path, 'r') as f:
+            proto_file = os.path.join(tmpdir, filename + '.proto')
+            with open(proto_file, 'w') as f:
                 f.write(proto)
-            return cls.file(file_path, tmpdir)
+            return cls.file(proto_file, tmpdir)
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 

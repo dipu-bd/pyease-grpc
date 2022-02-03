@@ -1,4 +1,4 @@
-__version__ = '1.0.0rc1'
+__version__ = '1.0.0'
 
 from .options import RequestOptions
 from .protoc import Protobuf

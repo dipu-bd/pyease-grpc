@@ -1,14 +1,12 @@
 import io
 import logging
-from msilib.schema import Error
-from typing import Optional
+from typing import Optional, Union
 
 import requests
 
-from pyease_grpc.protoc import Protobuf
-
 from . import protocol
 from .options import RequestOptions
+from .protoc import Protobuf
 from .rpc_method import RpcUri
 from .rpc_response import RpcResponse
 
@@ -32,11 +30,11 @@ class RpcSession(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self._session.close()
 
-    def request(self, uri: RpcUri, data: dict, opt: Optional[RequestOptions] = None) -> RpcResponse:
+    def request(self, uri: Union[str, RpcUri], data: dict, opt: Optional[RequestOptions] = None) -> RpcResponse:
         """Make gRPC-web request.
 
         Args:
-            uri (RpcUri): URL builder object.
+            uri (str|RpcUri): URL builder object.
             data (dict): JSON serializable request data.
             opt ([RequestOptions]): Request options.
 
@@ -44,6 +42,9 @@ class RpcSession(object):
             RpcResponse:  The response with one or more payloads.
         """
         # Prepare request data
+        if isinstance(uri, str):
+            uri = RpcUri.parse(uri)
+
         if uri.service not in self._proto.services:
             raise ValueError('No such service: ' + uri.service)
         service = self._proto.services[uri.service]
