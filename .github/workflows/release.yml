@@ -1,0 +1,77 @@
+name: Build and Publish
+
+on:
+  push:
+    # branches:
+    # - master
+    tags:
+      - "v*"
+
+jobs:
+  lint:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ['3.6', '3.7', '3.8', '3.9', '3.10']
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip wheel setuptools
+          pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          flake8 --count --show-source --statistics
+
+      - name: Build wheel package
+        run: python setup.py clean bdist_wheel
+
+      - name: Install and test package
+        run: |
+          pip install dist/*.whl
+          mkdir -p test
+          cd test && python -c 'import pyease_grpc; print(pyease_grpc.__version__)'
+
+  release:
+    needs: [lint]
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip wheel setuptools twine
+          pip install -r requirements.txt
+
+      - name: Build package
+        run: python setup.py clean bdist_wheel
+
+      - name: Release
+        uses: ncipollo/release-action@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with: # See available options at https://github.com/ncipollo/release-action
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          artifacts: "dist/*.whl"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish
+        run: python -m twine upload dist/pyease_grpc*.whl
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_NON_INTERACTIVE: true

@@ -6,8 +6,8 @@ from .rpc_response import RpcResponse
 from .rpc_session import RpcSession
 from .rpc_uri import RpcUri
 
-
 __all__ = [
+    '__version__',
     'RequestOptions',
     'Protobuf',
     'RpcResponse',
