@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 
 from setuptools import find_packages, setup
 
@@ -16,6 +17,17 @@ with open('requirements.txt', 'r', encoding='utf-8') as fp:
 curdir = os.path.dirname(__file__)
 with open(os.path.join(curdir, 'pyease_grpc', '__init__.py')) as fp:
     VERSION = re.findall(r"__version__\s+=\s+'([^']+)'", fp.read())[0]
+
+if 'push_tag' in sys.argv:
+    sys.argv.remove('push_tag')
+    os.system(f'git tag "v{VERSION}"')
+    os.system('git push --tags')
+    sys.exit(0)
+
+if 'pop_tag' in sys.argv:
+    os.system('git push --delete origin "v{VERSION}"')
+    os.system('git tag -d "v{VERSION}"')
+    sys.exit(0)
 
 setup(
     version=VERSION,
