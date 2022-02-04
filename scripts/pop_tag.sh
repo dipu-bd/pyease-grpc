@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=$(sed -nr "s/[^']+'([^']+)'$/\1/p" pyease_grpc/__init__.py)
+VERSION=$(python . -v | awk '{print $2}')
 
 git push --delete origin "v$VERSION"
 git tag -d "v$VERSION"
