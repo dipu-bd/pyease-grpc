@@ -1,5 +1,6 @@
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 
+from .generator import main
 from .options import RequestOptions
 from .protoc import Protobuf
 from .rpc_response import RpcResponse
@@ -13,4 +14,5 @@ __all__ = [
     'RpcResponse',
     'RpcSession',
     'RpcUri',
+    'main'
 ]

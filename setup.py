@@ -35,6 +35,9 @@ setup(
     ],
     include_package_data=True,
     install_requires=requirements,
+    entry_points={
+        'console_scripts': ['pyease-grpc=pyease_grpc:main'],
+    },
     classifiers=[
         'Development Status :: 1 - Planning',
         # 'Development Status :: 4 - Beta',
