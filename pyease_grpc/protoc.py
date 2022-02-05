@@ -69,12 +69,11 @@ class Protobuf:
         db = symbol_database.Default()
         self.messages: Dict[str, Type[Message]] = {}
         for proto in self._descriptor.file:
-            fd = db.pool.Add(proto)
-            for name in fd.message_types_by_name:
-                message = fd.message_types_by_name[name]
-                message_type = reflection.MakeClass(message)
-                registered = db.RegisterMessage(message_type)
-                self.messages[fd.package + '.' + name] = registered
+            db.pool.Add(proto)
+            for message in proto.message_type:
+                name = proto.package + '.' + message.name
+                md = db.pool.FindMessageTypeByName(name)
+                self.messages[name] = reflection.MakeClass(md)
 
     def _load_services(self):
         self.services: Dict[str, Dict[str, RpcMethod]] = {}
