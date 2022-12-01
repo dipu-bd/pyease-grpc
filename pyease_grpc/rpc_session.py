@@ -85,7 +85,7 @@ class RpcSession(object):
             stream=True,
         )
         if response.status_code >= 400:
-            return RpcResponse(original=response, payloads=[])
+            return RpcResponse(original=response, payloads=[], trailers={})
 
         # Read content stream
         content = response.content
@@ -97,9 +97,11 @@ class RpcSession(object):
         buffer.close()
 
         payloads = []
+        trailers = {}
         for message, trailer, compressed in messages:
             if trailer:
+                trailers = dict([line.decode().split(":", 1) for line in message.splitlines()])
                 break
             payloads.append(method.deserialize_response(message))
 
-        return RpcResponse(original=response, payloads=payloads)
+        return RpcResponse(original=response, payloads=payloads, trailers=trailers)
