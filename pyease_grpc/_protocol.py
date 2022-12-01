@@ -20,23 +20,24 @@ def _unpack_header(message: bytes) -> Tuple[bool, bool, int]:
     return trailer, compressed, length
 
 
-def wrap_message(message: bytes,
-                 trailer: bool = False,
-                 compressed: bool = False) -> bytes:
+def wrap_message(
+    message: bytes, trailer: bool = False, compressed: bool = False
+) -> bytes:
     header = _pack_header(trailer, compressed, len(message))
     return header + message
 
 
 def unwrap_message(message: bytes) -> Tuple[bytes, bool, bool]:
     trailer, compressed, length = _unpack_header(message)
-    data = message[_HEADER_LENGTH: _HEADER_LENGTH + length]
+    data = message[_HEADER_LENGTH : _HEADER_LENGTH + length]
     if length != len(data):
-        raise ValueError('Invalid data length: %d' % length)
+        raise ValueError("Invalid data length: %d" % length)
     return data, trailer, compressed
 
 
-def unwrap_message_stream(stream: IO[bytes]) \
-        -> Generator[Tuple[bytes, bool, bool], None, None]:
+def unwrap_message_stream(
+    stream: IO[bytes],
+) -> Generator[Tuple[bytes, bool, bool], None, None]:
     trailer = None
     while not trailer:
         header = stream.read(_HEADER_LENGTH)
@@ -49,21 +50,31 @@ def serialize_timeout(seconds: float):
     return f"{int(seconds * 1e9)}n"
 
 
-def serialize_message(message_type: Type[Message],
-                      data: dict,
-                      ignore_unknown=True) -> bytes:
+def serialize_message(
+    message_type: Type[Message],
+    data: dict,
+    ignore_unknown=True,
+) -> bytes:
     message = message_type()
     ParseDict(data, message, ignore_unknown_fields=ignore_unknown)
     return message.SerializeToString()
 
 
-def deserialize_message(message_type: Type[Message],
-                        data: bytes,
-                        including_defaults=True,
-                        float_precision=None,
-                        use_integers_for_enums=False) -> dict:
+def deserialize_message(
+    message_type: Type[Message],
+    data: bytes,
+    including_defaults=True,
+    float_precision=None,
+    use_integers_for_enums=False,
+) -> dict:
     message = message_type.FromString(data)
-    return MessageToDict(message,
-                         float_precision=float_precision,
-                         use_integers_for_enums=use_integers_for_enums,
-                         including_default_value_fields=including_defaults)
+    return MessageToDict(
+        message,
+        float_precision=float_precision,
+        use_integers_for_enums=use_integers_for_enums,
+        including_default_value_fields=including_defaults,
+    )
+
+
+def deserialize_trailer(data: bytes) -> dict:
+    return dict([line.split(":", 1) for line in data.decode("utf8").splitlines()])

@@ -6,6 +6,7 @@
 #     path = os.path.realpath(os.path.abspath(__file__))
 #     sys.path.insert(0, os.path.dirname(os.path.dirname(path)))
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from pyease_grpc import main
+
     main()

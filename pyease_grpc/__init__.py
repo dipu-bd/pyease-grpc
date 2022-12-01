@@ -1,4 +1,4 @@
-__version__ = '1.3.0'
+__version__ = "1.4.0"
 
 from .generator import main
 from .protoc import Protobuf
@@ -7,10 +7,10 @@ from .rpc_session import RpcSession
 from .rpc_uri import RpcUri
 
 __all__ = [
-    '__version__',
-    'Protobuf',
-    'RpcResponse',
-    'RpcSession',
-    'RpcUri',
-    'main'
+    "__version__",
+    "Protobuf",
+    "RpcResponse",
+    "RpcSession",
+    "RpcUri",
+    "main",
 ]

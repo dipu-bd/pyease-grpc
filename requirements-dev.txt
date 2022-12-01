@@ -1,6 +1,7 @@
 requests >= 2.25.0
-protobuf ~= 3.19.0
-grpcio-tools ~= 1.43.0
+protobuf >= 3.19.0
 
+grpcio-tools
 flake8
 autopep8
+black
