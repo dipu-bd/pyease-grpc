@@ -29,7 +29,7 @@ def wrap_message(
 
 def unwrap_message(message: bytes) -> Tuple[bytes, bool, bool]:
     trailer, compressed, length = _unpack_header(message)
-    data = message[_HEADER_LENGTH : _HEADER_LENGTH + length]
+    data = message[_HEADER_LENGTH:_HEADER_LENGTH + length]
     if length != len(data):
         raise ValueError("Invalid data length: %d" % length)
     return data, trailer, compressed

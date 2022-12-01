@@ -35,14 +35,14 @@ class RpcResponse(object):
 
     @property
     def grpc_message(self) -> Optional[str]:
-        """Returns the grpc-message of the trailer or `None` if it is not available"""
+        """Returns the grpc-message or `None` if it is not available"""
         if not self.trailer:
             return None
         return self.trailer.get("grpc-message", "")
 
     @property
     def grpc_status(self) -> Optional[int]:
-        """Returns the grpc-status of the trailer or `-1` if it is not available"""
+        """Returns the grpc-status or `-1` if it is not available"""
         if not self.trailer:
             return -1
         status = self.trailer.get("grpc-status", "")

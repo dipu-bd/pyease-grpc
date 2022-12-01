@@ -21,8 +21,8 @@ if "push_tag" in sys.argv:
     sys.exit(0)
 
 if "pop_tag" in sys.argv:
-    os.system('git push --delete origin "v{VERSION}"')
-    os.system('git tag -d "v{VERSION}"')
+    os.system(f'git push --delete origin "v{VERSION}"')
+    os.system(f'git tag -d "v{VERSION}"')
     sys.exit(0)
 
 setup(
