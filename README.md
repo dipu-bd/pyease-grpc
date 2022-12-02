@@ -31,7 +31,7 @@ $ pyease-grpc --version
 
 > You need to have a basic understanding of [how gRPC works](https://grpc.io/docs/what-is-grpc/introduction/).
 
-An example server and client can be found in the `example` folder. To run the server you need to have docker installed.
+An example server and client can be found in the `example` folder.
 
 ```
 > cd example
