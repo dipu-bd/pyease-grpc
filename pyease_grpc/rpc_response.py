@@ -40,7 +40,7 @@ class RpcResponse(object):
             return
 
         payloads = []
-        messages = _protocol.unwrap_message_stream(self.raw)
+        messages = _protocol.unwrap_message_stream(self.response)
         for message, trailer, compressed in messages:
             if compressed:
                 continue

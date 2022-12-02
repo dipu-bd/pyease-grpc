@@ -1,8 +1,9 @@
 import struct
-from typing import BinaryIO, Generator, Tuple, Type
+from typing import Generator, Tuple, Type
 
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
+from requests import Response
 
 _HEADER_FORMAT = ">BI"
 _HEADER_LENGTH = struct.calcsize(_HEADER_FORMAT)
@@ -38,13 +39,29 @@ def unwrap_message(message: bytes) -> Tuple[bytes, bool, bool]:
 
 
 def unwrap_message_stream(
-    stream: BinaryIO,
+    response: Response,
+    chunk_size: int = 512,
 ) -> Generator[Tuple[bytes, bool, bool], None, None]:
+    it = response.iter_content(chunk_size)
+
+    def read_upto(length, previous):
+        while len(previous) < length:
+            try:
+                previous += next(it)
+            except StopIteration:
+                break
+        return previous[:length], previous[length:]
+
+    content = b""
     trailer = None
     while not trailer:
-        header = stream.read(_HEADER_LENGTH)
+        header, content = read_upto(_HEADER_LENGTH, content)
+        if len(header) < _HEADER_LENGTH:
+            raise TypeError("Malformatted header")
         trailer, compressed, length = _unpack_header(header)
-        data = stream.read(length)
+        data, content = read_upto(length, content)
+        if len(data) < length:
+            raise TypeError("Malformatted content")
         yield data, trailer, compressed
 
 
