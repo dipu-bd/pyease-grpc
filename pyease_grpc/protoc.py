@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import shutil
@@ -9,7 +10,8 @@ from google.protobuf.descriptor_pb2 import FileDescriptorSet
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
 
-from .rpc_method import RpcMethod
+from .rpc_method import MethodType, RpcMethod
+from .rpc_uri import RpcUri
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +92,17 @@ class Protobuf:
         ParseDict(descriptor_json, fds)
         return cls(fds)
 
+    @classmethod
+    def restore_file(cls, descriptor_json_file: str):
+        """Creates a :class:`Protobuf` from a :class:`FileDescriptorSet` JSON content.
+
+        Arguments:
+            descriptor_json_file (str) Path to the JSON file.
+        """
+        with open(descriptor_json_file, "r", encoding="utf8") as fp:
+            data = json.load(fp)
+            return Protobuf.restore(data)
+
     def __init__(self, descriptor: FileDescriptorSet) -> None:
         """Initializes an instance from a :class:`FileDescriptorSet`.
 
@@ -97,10 +110,8 @@ class Protobuf:
             descriptor (FileDescriptorSet) A file descriptor set message
         """
         self._descriptor = descriptor
-        self._load_messages()
-        self._load_services()
 
-    def _load_messages(self):
+        # load messages
         db = symbol_database.Default()
         self.messages: Dict[str, Type[Message]] = {}
         for proto in self._descriptor.file:
@@ -110,19 +121,27 @@ class Protobuf:
                 md = db.pool.FindMessageTypeByName(name)
                 self.messages[name] = reflection.MakeClass(md)
 
-    def _load_services(self):
+        # load services
         self.services: Dict[str, Dict[str, RpcMethod]] = {}
         for proto in self._descriptor.file:
             for service in proto.service:
                 self.services[service.name] = {}
                 for method in service.method:
+                    method_type = _get_method_type(
+                        method.client_streaming,
+                        method.server_streaming,
+                    )
                     self.services[service.name][method.name] = RpcMethod(
                         package=proto.package,
                         service=service.name,
                         method=method.name,
                         request=self.messages[method.input_type[1:]],
                         response=self.messages[method.output_type[1:]],
+                        type=method_type,
                     )
+
+    def __str__(self) -> str:
+        return json.dumps(self.save(), ensure_ascii=False)
 
     @property
     def descriptor(self) -> FileDescriptorSet:
@@ -132,6 +151,42 @@ class Protobuf:
     def save(self) -> dict:
         """Returns the :class:`FileDescriptorSet` of the current protobuf as JSON"""
         return MessageToDict(self._descriptor)
+
+    def save_file(self, file_path: str) -> None:
+        """Saves the :class:`FileDescriptorSet` of the current protobuf as JSON to a file
+
+        Arguments:
+            file_path (str): A file path to write the JSON content
+        """
+        with open(file_path, "w", encoding="utf8") as fp:
+            json.dump(self.save(), fp, ensure_ascii=False)
+
+    def get_method(self, uri: RpcUri) -> Optional[RpcMethod]:
+        """Gets the method corresponding to a :class:`RpcUri`"""
+        if uri.service not in self.services:
+            return None
+        methods = self.services[uri.service]
+        if uri.method not in methods:
+            return None
+        method = methods[uri.method]
+        if method.package != uri.package:
+            return None
+        return method
+
+    def has_method(self, uri: RpcUri) -> bool:
+        """Check whether the method corresponding to a :class:`RpcUri` exists"""
+        return isinstance(self.get_method(uri), RpcMethod)
+
+
+def _get_method_type(client_streaming: bool, server_streaming: bool):
+    if client_streaming and server_streaming:
+        return MethodType.stream_stream
+    elif client_streaming:
+        return MethodType.stream_unary
+    elif server_streaming:
+        return MethodType.unary_stream
+    else:
+        return MethodType.unary_unary
 
 
 def _generate_descriptor(out_file: str, proto_file: str, include_paths: List[str] = []):

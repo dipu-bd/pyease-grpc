@@ -1,8 +1,8 @@
-import io
 import logging
-from typing import Optional, Union
+from typing import List, Optional, Union
 
-import requests
+from requests import Session
+from requests.cookies import RequestsCookieJar
 from requests.structures import CaseInsensitiveDict
 
 from . import _protocol
@@ -14,6 +14,28 @@ log = logging.getLogger(__name__)
 
 
 class RpcSession(object):
+    @classmethod
+    def from_file(
+        cls,
+        proto_file: str,
+        include_paths: List[str] = [],
+        work_dir: Optional[str] = None,
+    ):
+        """Make a :class:`RpcSession` from a proto file.
+
+        Arguments:
+            proto_file (str) A *.proto file containing protobuf definitions.
+            include_paths (List[str]) Additional paths to include when parsing. Default = []
+            work_dir (Optional[str]): Main working folder. Default = None
+        """
+        return cls(
+            Protobuf.from_file(
+                proto_file=proto_file,
+                include_paths=include_paths,
+                work_dir=work_dir,
+            )
+        )
+
     @classmethod
     def from_descriptor(cls, descriptor_json: dict):
         """Make a :class:`RpcSession` from a file description set message.
@@ -30,7 +52,7 @@ class RpcSession(object):
             proto (Protobuf): The protobuf definition.
         """
         self._proto = proto
-        self._session = requests.Session()
+        self._session = Session()
 
     def __enter__(self):
         return self
@@ -38,25 +60,50 @@ class RpcSession(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self._session.close()
 
+    @property
+    def session(self) -> Session:
+        """The internal session used for the gRPC-Web request"""
+        return self._session
+
     def request(
         self,
         uri: Union[str, RpcUri],
         data: dict,
         headers: Optional[CaseInsensitiveDict] = None,
         timeout: Optional[float] = None,
+        cookies: Optional[Union[dict, RequestsCookieJar]] = None,
+        auth: Optional[tuple] = None,
+        proxies: Optional[dict] = None,
+        verify: bool = True,
+        cert: Optional[Union[str, tuple]] = None,
     ) -> RpcResponse:
-        """Make gRPC-web request.
+        """Calls a gRPC-Web method and gets the response.
 
         Arguments:
-            uri (str|RpcUri): URL builder object.
-            data (dict): JSON serializable request data.
-            headers ([dict]): Additional request headers.
-            timeout ([float]): Timeout in seconds.
+            uri (str|RpcUri): Full URL of an RPC method, or an :class:`RpcUri` instance.
+            data (dict): Request message as JSON.
+            headers (dict): Additional request headers.
+            timeout (float): Timeout in seconds. If None, no timeout will be enforced.
+
+        Keyword Arguments:
+            cookies (dict|CookieJar): Send with the :class:`Request`.
+            auth (tuple) Auth tuple or callable to enable Basic/Digest/Custom HTTP Auth.
+            proxies (dict) Request proxy mappings
+            verify (bool) Either a boolean, in which case it controls whether we verify
+                the server's TLS certificate, or a string, in which case it must be a path
+                to a CA bundle to use. Defaults to ``True``. When set to
+                ``False``, requests will accept any TLS certificate presented by
+                the server, and will ignore hostname mismatches and/or expired
+                certificates, which will make your application vulnerable to
+                man-in-the-middle (MitM) attacks. Setting verify to ``False``
+                may be useful during local development or testing.
+            cert (str|tuple) if String, path to ssl client cert file (.pem).
+                If Tuple, ('cert', 'key') pair.
 
         Returns:
-            RpcResponse:  The response with one or more payloads.
+            An :class:`RpcResponse` with one or more payloads.
         """
-        # Prepare request data
+        # Prepare protobuf method
         if isinstance(uri, str):
             uri = RpcUri.parse(uri)
 
@@ -71,6 +118,7 @@ class RpcSession(object):
         if uri.package != method.package:
             raise ValueError("Invalid package name: " + uri.package)
 
+        # Prepare request headers
         headers = headers or CaseInsensitiveDict({})
         headers["x-grpc-web"] = "1"
         headers["content-type"] = "application/grpc-web+proto"
@@ -78,10 +126,11 @@ class RpcSession(object):
             grpc_timeout = _protocol.serialize_timeout(timeout)
             headers["grpc-timeout"] = grpc_timeout
 
+        # Prepare request data
         message = method.serialize_request(data)
         message = _protocol.wrap_message(message)
 
-        # Fetch response
+        # Get the response
         response = self._session.post(
             uri.build(),
             data=message,
@@ -89,28 +138,11 @@ class RpcSession(object):
             headers=dict(headers),
             allow_redirects=True,
             stream=True,
+            auth=auth,
+            cookies=cookies,
+            verify=verify,
+            cert=cert,
+            proxies=proxies,
         )
 
-        rpc_response = RpcResponse(response)
-        if rpc_response.status_code >= 400:
-            return rpc_response
-
-        # Read content stream
-        content = response.content
-        response.close()
-
-        # Process response content
-        buffer = io.BytesIO(content)
-        messages = list(_protocol.unwrap_message_stream(buffer))
-        buffer.close()
-
-        for message, trailer, compressed in messages:
-            if compressed:
-                break
-            if trailer:
-                rpc_response.trailer = method.deserialize_trailer(message)
-                break
-            parsed = method.deserialize_response(message)
-            rpc_response.payloads.append(parsed)
-
-        return rpc_response
+        return RpcResponse(response, method)

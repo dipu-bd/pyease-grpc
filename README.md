@@ -29,79 +29,92 @@ $ pyease-grpc --version
 
 ### Introduction
 
-To use it, you need to have a basic understanding of [how gRPC works](https://grpc.io/docs/what-is-grpc/introduction/).
+> You need to have a basic understanding of [how gRPC works](https://grpc.io/docs/what-is-grpc/introduction/).
 
-Let's run the server first. There is an example project here: https://github.com/dipu-bd/grpc-web-example
+An example server and client can be found in the `example` folder. To run the server you need to have docker installed.
 
-Clone it and follow the instructions on the README.md to start the server.
+```
+> cd example
+> docker compose up
+```
 
-Let' check the `example` folder for the `time_service.proto` file:
+It runs a grpc server and creates an envoy proxy for grpc-web access.
+
+The grpc server address: `localhost:50050`
+The envoy proxy address: `http://localhost:8080`
+
+Now let's check the `example/server` folder for the `abc.proto` file:
 
 ```proto
-// file: time_service.proto
+// file: example/server/abc.proto
 syntax = "proto3";
 
-package smpl.time.api.v1;
+package pyease.sample.v1;
 
-option go_package = "github.com/kostyay/grpc-web-example/api/time/v1";
-
-message GetCurrentTimeRequest {
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloResponse);
+  rpc LotsOfReplies(HelloRequest) returns (stream HelloResponse);
+  rpc LotsOfGreetings(stream HelloRequest) returns (HelloResponse);
+  rpc BidiHello(stream HelloRequest) returns (stream HelloResponse);
 }
 
-message GetCurrentTimeResponse {
-  string current_time = 1;
+message HelloRequest {
+  string name = 1;
 }
 
-service TimeService {
-  rpc GetCurrentTime(GetCurrentTimeRequest) returns (GetCurrentTimeResponse);
+message HelloResponse {
+  string reply = 1;
 }
 ```
 
-Suppose the gRPC web server is running at `http://localhost:8080`.
-
-To make a request to `GetCurrentTime`:
+To make a request to `SayHello`:
 
 ```py
-from pyease_grpc import Protobuf, RpcSession
-from pyease_grpc.rpc_uri import RpcUri
+from pyease_grpc import Protobuf, RpcSession, RpcUri
 
-protobuf = Protobuf.from_file('time_service.proto')
+protobuf = Protobuf.from_file("example/server/abc.proto")
 session = RpcSession(protobuf)
 
 response = session.request(
-    RpcUri('http://localhost:8080', package='smpl.time.api.v1',
-           service='TimeService', method='GetCurrentTime'),
-    {},
+    RpcUri(
+      "http://localhost:8080",
+      package="pyease.sample.v1",
+      service="Greeter",
+      method="SayHello",
+    ),
+    {
+      "name": "world"
+    },
 )
 response.raise_for_status()
 
 result = response.single
-print(result['currentTime'])
+print(result['reply'])
 ```
 
-The `session.request` accepts a `dict` as input and returns the response as `dict`.
+The `session.request` accepts request data as a `dict` and returns the response as a `dict`.
+
+> gRPC-web currently supports 2 RPC modes: Unary RPCs, Server-side Streaming RPCs.
+> Client-side and Bi-directional streaming is not currently supported.
+>
+> Source: https://github.com/grpc/grpc-web#streaming-support
 
 ### Descriptor
 
-A more convenient way to use the client is directly using the `FileDescriptorSet`.
+The `FileDescriptorSet` is the faster way to load Protobuf.
 
 To generate `FileDescriptorSet` as json:
 
 ```
-$ pyease-grpc -I example example/time_service.proto --output example/descriptor.json
+$ pyease-grpc -I example/server example/server/abc.proto --output abc_fds.json
 ```
 
-Now you can use this descriptor file directly to create `Protobuf` instance.
+Now you can use this descriptor file directly to create a `Protobuf` instance.
 
 ```py
-import json
-
-with open('descriptor.json', 'r') as f:
-  descriptor = json.load(f)
-
 # Use the descriptor directly to create protobuf instance
-protobuf = Protobuf.restore(descriptor)
+protobuf = Protobuf.restore_file('abc_fds.json')
 
-# You can even create the session directly
+# You can even create the session directly from descriptor
 session = RpcSession.from_descriptor(descriptor)
 ```

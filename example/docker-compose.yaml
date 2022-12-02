@@ -1,0 +1,24 @@
+name: abc-example
+version: "3.7"
+
+services:
+  greeter:
+    image: greeter-server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "50050:50050"
+    volumes:
+      - "./server:/app"
+
+  envoy:
+    image: greeter-envoy
+    build:
+      context: ./envoy
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "9901:9901"
+    links:
+      - greeter

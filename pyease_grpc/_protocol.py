@@ -1,5 +1,5 @@
 import struct
-from typing import IO, Generator, Tuple, Type
+from typing import BinaryIO, Generator, Tuple, Type
 
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
@@ -29,14 +29,16 @@ def wrap_message(
 
 def unwrap_message(message: bytes) -> Tuple[bytes, bool, bool]:
     trailer, compressed, length = _unpack_header(message)
-    data = message[_HEADER_LENGTH:_HEADER_LENGTH + length]
+    start = _HEADER_LENGTH
+    stop = _HEADER_LENGTH + length
+    data = message[start:stop]
     if length != len(data):
         raise ValueError("Invalid data length: %d" % length)
     return data, trailer, compressed
 
 
 def unwrap_message_stream(
-    stream: IO[bytes],
+    stream: BinaryIO,
 ) -> Generator[Tuple[bytes, bool, bool], None, None]:
     trailer = None
     while not trailer:

@@ -1,37 +1,83 @@
-from typing import List, Optional
+from typing import Generator, Optional
 
-from requests import HTTPError, Response
+from requests import Response
+
+from . import _protocol
+from .rpc_method import RpcMethod
 
 
 class RpcResponse(object):
     def __init__(
         self,
-        original: Response,
-        payloads: List[dict] = [],
-        trailer: dict = {},
+        response: Response,
+        method: RpcMethod,
     ) -> None:
-        self.original = original
-        self.payloads = payloads
-        self.trailer = trailer
+        self.response = response
+        self.raw = response.raw
+        self.method = method
+        self.trailer = None
+        self._payloads = None
+        self._payload_consumed = False
+
+    def raise_for_status(self):
+        """Raises :class:`HTTPError`, if one occurred."""
+        self.response.raise_for_status()
+
+    def close(self):
+        """Releases the connection back to the pool.
+
+        Once this method has been called the underlying raw object must not be accessed again."""
+        self.response.close()
+
+    def iter_payloads(self) -> Generator[dict, None, None]:
+        if self._payload_consumed:
+            yield from self._payloads
+            return
+
+        if self.response.status_code >= 400:
+            self._payload_consumed = True
+            self._payloads = []
+            return
+
+        payloads = []
+        messages = _protocol.unwrap_message_stream(self.raw)
+        for message, trailer, compressed in messages:
+            if compressed:
+                continue
+            if trailer:
+                self.trailer = self.method.deserialize_trailer(message)
+                break
+            payload = self.method.deserialize_response(message)
+            payloads.append(payload)
+            yield payload
+
+        self._payload_consumed = True
+        self._payloads = payloads
 
     @property
     def headers(self) -> dict:
-        return self.original.headers
+        return self.response.headers
 
     @property
     def status_code(self) -> int:
-        return self.original.status_code
+        return self.response.status_code
 
     @property
     def status_message(self):
-        return self.original.reason
+        return self.response.reason
+
+    @property
+    def payloads(self):
+        if not self._payload_consumed:
+            list(self.iter_payloads())
+        return self._payloads
 
     @property
     def single(self) -> Optional[dict]:
-        """Returns the first response payload"""
+        """Returns the last response payload"""
         if not self.payloads:
             return None
-        return self.payloads[0]
+        return self.payloads[-1]
 
     @property
     def grpc_message(self) -> Optional[str]:
@@ -49,14 +95,3 @@ class RpcResponse(object):
         if not status.isdigit():
             return -1
         return int(status)
-
-    def raise_for_status(self):
-        """Raises :class:`HTTPError`, if one occurred."""
-        self.original.raise_for_status()
-
-        http_error_msg = ""
-        if self.grpc_status != 0:
-            http_error_msg = f"{self.grpc_status} GRPC Error: {self.grpc_message}"
-
-        if http_error_msg:
-            raise HTTPError(http_error_msg, response=self)
