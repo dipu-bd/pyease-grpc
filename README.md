@@ -292,19 +292,14 @@ import grpc
 from pyease_grpc import RpcSession, RpcUri
 
 session = RpcSession.from_file("example/server/abc.proto")
-response = session.call(
-    RpcUri(
-      base_url="localhost:50050",
-      package="pyease.sample.v1",
-      service="Greeter",
-      method="SayHello",
-    ),
-    {
-      "name": "error",
-    }
+rpc_uri = RpcUri(
+  base_url="localhost:50050",
+  package="pyease.sample.v1",
+  service="Greeter",
+  method="SayHello",
 )
-
 try:
+  response = session.call(rpc_uri, {"name": "error"})
   print(response.single["reply"])
 except grpc.RpcError as e:
   print('grpc status', e.code())
