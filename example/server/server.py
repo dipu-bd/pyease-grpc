@@ -23,25 +23,43 @@ NUMBER_OF_REPLY = 5
 class Greeter(GreeterServicer):
     def SayHello(self, request: HelloRequest, context):
         print("Serving SayHello =>", request, end="")
+        if request.name == "error":
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("Name `error` is not supported")
+            return HelloResponse()
         time.sleep(1)
         return HelloResponse(reply=f"Hello, {request.name}!")
 
     def LotsOfReplies(self, request, context):
         print("Serving LotsOfReplies =>", request, end="")
+        if request.name == "error":
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            context.set_details("Name `error` is not supported")
+            return
         for i in range(NUMBER_OF_REPLY):
             time.sleep(1)
             yield HelloResponse(reply=f"Hello, {request.name} no. {i}!")
 
     def LotsOfGreetings(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
-        names = ", ".join([request.name for request in request_iterator])
-        print("Serving LotsOfGreetings =>", names, end="")
+        print("Serving LotsOfGreetings =>", end="")
+        names = []
+        for request in request_iterator:
+            if request.name == "error":
+                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                context.set_details("Name `error` is not supported")
+                return HelloResponse()
+            names.append(request.name)
         time.sleep(1)
-        return HelloResponse(reply=f"Hello, {names}!")
+        return HelloResponse(reply=f"Hello, {', '.join(names)}!")
 
     def BidiHello(self, request_iterator, context):
-        print("Serving BidiHello =>", request_iterator, end="")
+        print("Serving BidiHello =>", end="")
         for request in request_iterator:
+            if request.name == "error":
+                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+                context.set_details("Name `error` is not supported")
+                continue
             time.sleep(1)
             yield HelloResponse(reply=f"Hello, {request.name}!")
 
@@ -66,7 +84,5 @@ def serve(listen_addr):
 
 if __name__ == "__main__":
     listen_addr = "[::]:50050"
-    if len(sys.argv) >= 2 and sys.argv[1] == "async":
-        asyncio.run(async_serve(listen_addr))
-    else:
-        serve(listen_addr)
+    # serve(listen_addr)
+    asyncio.run(async_serve(listen_addr))

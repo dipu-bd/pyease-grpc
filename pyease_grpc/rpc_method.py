@@ -1,23 +1,14 @@
-from enum import Enum
 from typing import Type
 
 from google.protobuf.message import Message
 
-from ._protocol import deserialize_message, deserialize_trailer, serialize_message
+from . import _protocol
+from .rpc_method_type import MethodType
+from .rpc_trailer import RpcTrailer
 from .rpc_uri import RpcUri
 
 
-class MethodType(Enum):
-    unary_unary = "unary_unary"
-    unary_stream = "unary_stream"
-    stream_unary = "stream_unary"
-    stream_stream = "stream_stream"
-
-    def __str__(self) -> str:
-        return self.value
-
-
-class RpcMethod:
+class RpcMethod(object):
     def __init__(
         self,
         package: str,
@@ -62,11 +53,18 @@ class RpcMethod:
             method=self.method,
         ).build()
 
+    def parse_request(self, data: dict) -> Message:
+        return _protocol.parse_message(self.request, data)
+
     def serialize_request(self, data: dict) -> bytes:
-        return serialize_message(self.request, data)
+        return self.parse_request(data).SerializeToString()
 
-    def deserialize_response(self, data: bytes) -> dict:
-        return deserialize_message(self.response, data)
+    def deserialize_response(self, data: bytes) -> Message:
+        return _protocol.deserialize_message(self.response, data)
 
-    def deserialize_trailer(self, trailer: bytes) -> dict:
-        return deserialize_trailer(trailer)
+    def deserialize_response_dict(self, data: bytes) -> dict:
+        return _protocol.message_to_dict(self.deserialize_response(data))
+
+    def deserialize_trailer(self, trailer: bytes) -> RpcTrailer:
+        trailer = _protocol.deserialize_trailer(trailer)
+        return RpcTrailer(trailer)

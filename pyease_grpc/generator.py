@@ -6,7 +6,7 @@ import sys
 from argparse import ArgumentParser
 
 from . import __version__
-from .protoc import Protobuf
+from .protobuf import Protobuf
 
 
 def get_args():

@@ -3,29 +3,20 @@ import logging
 import os
 import shutil
 import tempfile
-from typing import Dict, List, Optional, Type
+from typing import Dict, Generator, List, Optional, Type
 
-from google.protobuf import reflection, symbol_database
 from google.protobuf.descriptor_pb2 import FileDescriptorSet
-from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
 
-from .rpc_method import MethodType, RpcMethod
+from . import _protocol
+from .rpc_method import RpcMethod
+from .rpc_method_type import get_method_type
 from .rpc_uri import RpcUri
 
 logger = logging.getLogger(__name__)
 
-try:
-    from grpc_tools import protoc
-except ImportError as e:
-    logger.debug(
-        str(e) + " Run 'pip install grpcio-tools' to install it."
-        " It is required to parse proto files."
-    )
-    protoc = None
 
-
-class Protobuf:
+class Protobuf(object):
     @classmethod
     def from_file(
         cls,
@@ -45,7 +36,7 @@ class Protobuf:
         os.makedirs(tmp_dir, exist_ok=True)
         try:
             out_file = os.path.join(tmp_dir, "descriptor.bin")
-            res = _generate_descriptor(out_file, proto_file, include_paths)
+            res = _protocol.generate_descriptor(out_file, proto_file, include_paths)
             with open(res, "rb") as f:
                 return cls(FileDescriptorSet.FromString(f.read()))
         finally:
@@ -88,8 +79,7 @@ class Protobuf:
         Arguments:
             descriptor_json (dict) A :class:`FileDescriptorSet` message content as JSON
         """
-        fds = FileDescriptorSet()
-        ParseDict(descriptor_json, fds)
+        fds = _protocol.parse_message(FileDescriptorSet, descriptor_json)
         return cls(fds)
 
     @classmethod
@@ -110,35 +100,11 @@ class Protobuf:
             descriptor (FileDescriptorSet) A file descriptor set message
         """
         self._descriptor = descriptor
-
-        # load messages
-        db = symbol_database.Default()
-        self.messages: Dict[str, Type[Message]] = {}
-        for proto in self._descriptor.file:
-            db.pool.Add(proto)
-            for message in proto.message_type:
-                name = proto.package + "." + message.name
-                md = db.pool.FindMessageTypeByName(name)
-                self.messages[name] = reflection.MakeClass(md)
-
-        # load services
+        self.messages = _protocol.load_messages(self._descriptor)
         self.services: Dict[str, Dict[str, RpcMethod]] = {}
-        for proto in self._descriptor.file:
-            for service in proto.service:
-                self.services[service.name] = {}
-                for method in service.method:
-                    method_type = _get_method_type(
-                        method.client_streaming,
-                        method.server_streaming,
-                    )
-                    self.services[service.name][method.name] = RpcMethod(
-                        package=proto.package,
-                        service=service.name,
-                        method=method.name,
-                        request=self.messages[method.input_type[1:]],
-                        response=self.messages[method.output_type[1:]],
-                        type=method_type,
-                    )
+        for method in _load_rpc_methods(self._descriptor, self.messages):
+            self.services.setdefault(method.service, {})
+            self.services[method.service][method.method] = method
 
     def __str__(self) -> str:
         return json.dumps(self.save(), ensure_ascii=False)
@@ -150,7 +116,7 @@ class Protobuf:
 
     def save(self) -> dict:
         """Returns the :class:`FileDescriptorSet` of the current protobuf as JSON"""
-        return MessageToDict(self._descriptor)
+        return _protocol.message_to_dict(self._descriptor)
 
     def save_file(self, file_path: str) -> None:
         """Saves the :class:`FileDescriptorSet` of the current protobuf as JSON to a file
@@ -178,67 +144,22 @@ class Protobuf:
         return isinstance(self.get_method(uri), RpcMethod)
 
 
-def _get_method_type(client_streaming: bool, server_streaming: bool):
-    if client_streaming and server_streaming:
-        return MethodType.stream_stream
-    elif client_streaming:
-        return MethodType.stream_unary
-    elif server_streaming:
-        return MethodType.unary_stream
-    else:
-        return MethodType.unary_unary
-
-
-def _generate_descriptor(out_file: str, proto_file: str, include_paths: List[str] = []):
-    if not protoc:
-        raise ModuleNotFoundError("Missing package: 'grpcio-tools'")
-
-    if not proto_file.endswith(".proto"):
-        raise TypeError("Not a proto file")
-
-    if not os.path.isfile(proto_file):
-        raise FileNotFoundError(proto_file)
-
-    out_file = os.path.abspath(out_file)
-    proto_file = os.path.abspath(proto_file)
-
-    if not include_paths:
-        include_paths = [os.path.dirname(proto_file)]
-    include_paths = [os.path.abspath(x) for x in include_paths if os.path.isdir(x)]
-
-    protoc_py_file = os.path.abspath(protoc.__file__)
-    proto_include = _resource_path("grpc_tools", "_proto")
-
-    protoc_config = [
-        protoc_py_file,
-        "--proto_path",
-        proto_include,
-    ]
-
-    for path in set(include_paths):
-        protoc_config += [
-            "--proto_path",
-            str(path),
-        ]
-
-    protoc_config += [
-        "--descriptor_set_out",
-        out_file,
-        "--include_imports",
-        proto_file,
-    ]
-
-    protoc.main(protoc_config)
-    return out_file
-
-
-def _resource_path(package, path):
-    try:
-        import pkg_resources
-
-        return pkg_resources.resource_filename(package, path)
-    except Exception:
-        import importlib.resources
-
-        files = importlib.resources.files(package)
-        return os.path.abspath(str(files / path))
+def _load_rpc_methods(
+    fds: FileDescriptorSet,
+    messages: Dict[str, Type[Message]],
+) -> Generator[RpcMethod, None, None]:
+    for proto in fds.file:
+        for service in proto.service:
+            for method in service.method:
+                method_type = get_method_type(
+                    method.client_streaming,
+                    method.server_streaming,
+                )
+                yield RpcMethod(
+                    package=proto.package,
+                    service=service.name,
+                    method=method.name,
+                    type=method_type,
+                    request=messages[method.input_type[1:]],
+                    response=messages[method.output_type[1:]],
+                )

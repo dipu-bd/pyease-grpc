@@ -18,54 +18,42 @@ finally:
 GRPC_ADDRESS = "localhost:50050"
 
 
-def say_hello():
+def say_hello(name):
     print("Calling SayHello:")
     with grpc.insecure_channel(GRPC_ADDRESS) as channel:
         stub = GreeterStub(channel)
-        response = stub.SayHello(HelloRequest(name="world"))
+        response = stub.SayHello(HelloRequest(name=name))
         print(response, end="")
         print()
 
 
-def lots_of_replies():
+def lots_of_replies(name):
     print("Calling LotsOfReplies:")
     with grpc.insecure_channel(GRPC_ADDRESS) as channel:
         stub = GreeterStub(channel)
-        response_iterator = stub.LotsOfReplies(HelloRequest(name="world"))
+        response_iterator = stub.LotsOfReplies(HelloRequest(name=name))
         for response in response_iterator:
             print(response, end="")
         print()
 
 
-def lots_of_greetings():
+def lots_of_greetings(*names):
     print("Calling LotsOfGreetings:")
     with grpc.insecure_channel(GRPC_ADDRESS) as channel:
         stub = GreeterStub(channel)
         response = stub.LotsOfGreetings(
-            iter(
-                (
-                    HelloRequest(name="A"),
-                    HelloRequest(name="B"),
-                    HelloRequest(name="C"),
-                )
-            )
+            iter([HelloRequest(name=name) for name in names]),
         )
         print(response, end="")
         print()
 
 
-def bidi_hello():
+def bidi_hello(*names):
     print("Calling BidiHello:")
     with grpc.insecure_channel(GRPC_ADDRESS) as channel:
         stub = GreeterStub(channel)
         response_iterator = stub.BidiHello(
-            iter(
-                (
-                    HelloRequest(name="A"),
-                    HelloRequest(name="B"),
-                    HelloRequest(name="C"),
-                )
-            )
+            iter([HelloRequest(name=name) for name in names]),
         )
         for response in response_iterator:
             print(response, end="")
@@ -73,7 +61,27 @@ def bidi_hello():
 
 
 if __name__ == "__main__":
-    say_hello()
-    lots_of_replies()
-    lots_of_greetings()
-    bidi_hello()
+    say_hello("world")
+    lots_of_replies("world")
+    lots_of_greetings("A", "B", "C")
+    bidi_hello("A", "B", "C")
+
+    try:
+        say_hello("error")
+    except grpc.RpcError as e:
+        print(e.code(), e.details(), end="\n\n")
+
+    try:
+        lots_of_replies("error")
+    except grpc.RpcError as e:
+        print(e.code(), e.details(), end="\n\n")
+
+    try:
+        lots_of_greetings("A", "error", "C")
+    except grpc.RpcError as e:
+        print(e.code(), e.details(), end="\n\n")
+
+    try:
+        bidi_hello("A", "error", "C")
+    except grpc.RpcError as e:
+        print(e.code(), e.details(), end="\n\n")

@@ -1,14 +1,17 @@
 import logging
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
+import grpc
 from requests import Session
 from requests.cookies import RequestsCookieJar
 from requests.structures import CaseInsensitiveDict
 
 from . import _protocol
-from .protoc import Protobuf
-from .rpc_method import RpcUri
-from .rpc_response import RpcResponse
+from .protobuf import Protobuf
+from .rpc_response_native import RpcNativeResponse
+from .rpc_response_web import RpcWebResponse
+from .rpc_trailer import RpcTrailer
+from .rpc_uri import RpcUri
 
 log = logging.getLogger(__name__)
 
@@ -76,8 +79,8 @@ class RpcSession(object):
         proxies: Optional[dict] = None,
         verify: bool = True,
         cert: Optional[Union[str, tuple]] = None,
-    ) -> RpcResponse:
-        """Calls a gRPC-Web method and gets the response.
+    ) -> RpcWebResponse:
+        """Calls a gRPC method using the Web protocol.
 
         Arguments:
             uri (str|RpcUri): Full URL of an RPC method, or an :class:`RpcUri` instance.
@@ -101,7 +104,7 @@ class RpcSession(object):
                 If Tuple, ('cert', 'key') pair.
 
         Returns:
-            An :class:`RpcResponse` with one or more payloads.
+            An :class:`RpcWebResponse` with one or more payloads.
         """
         # Prepare protobuf method
         if isinstance(uri, str):
@@ -119,7 +122,7 @@ class RpcSession(object):
             raise ValueError("Invalid package name: " + uri.package)
 
         # Prepare request headers
-        headers = headers or CaseInsensitiveDict({})
+        headers = CaseInsensitiveDict(headers or {})
         headers["x-grpc-web"] = "1"
         headers["content-type"] = "application/grpc-web+proto"
         if timeout is not None:
@@ -132,7 +135,7 @@ class RpcSession(object):
 
         # Get the response
         response = self._session.post(
-            uri.build(),
+            url=uri.build(),
             data=message,
             timeout=timeout,
             headers=dict(headers),
@@ -144,5 +147,71 @@ class RpcSession(object):
             cert=cert,
             proxies=proxies,
         )
+        response.raise_for_status()
 
-        return RpcResponse(response, method)
+        if "grpc-status" in response.headers:
+            trailer = RpcTrailer(response.headers)
+            if not trailer.is_ok():
+                raise trailer
+
+        return RpcWebResponse(method, response)
+
+    def call(
+        self,
+        uri: Union[str, RpcUri],
+        data: Union[dict, Iterable[dict]],
+        channel: grpc.Channel = None,
+        timeout: Optional[float] = None,
+    ) -> RpcNativeResponse:
+        """Calls the gRPC method using native gRPC protocol.
+
+        Arguments:
+            uri (str|RpcUri): Full URL of an RPC method, or an :class:`RpcUri` instance.
+            data (dict|Iterable[dict]): Request message data or iterable data for stream.
+            channel (grpc.Channel): The Channel to use. If not provided,
+                an insecure channel will be used by default.
+            timeout (float): Timeout in seconds. If None, no timeout will be enforced.
+
+        Returns:
+            An :class:`RpcNativeResponse` with one or more payloads.
+        """
+        # Prepare protobuf method
+        if isinstance(uri, str):
+            uri = RpcUri.parse(uri)
+
+        if uri.service not in self._proto.services:
+            raise ValueError("No such service: " + uri.service)
+        service = self._proto.services[uri.service]
+
+        if uri.method not in service:
+            raise ValueError("No such method: " + uri.method)
+        method = service[uri.method]
+
+        if uri.package != method.package:
+            raise ValueError("Invalid package name: " + uri.package)
+
+        # Make caller from channel
+        if not channel:
+            channel = grpc.insecure_channel(uri.base_url)
+
+        caller = getattr(channel, str(method.type), False)
+        if not caller:
+            raise ValueError("Invalid method type: " + method.type)
+
+        stub = caller(
+            uri.path,
+            request_serializer=method.request.SerializeToString,
+            response_deserializer=method.response.FromString,
+        )
+
+        if str(method.type).startswith("stream"):
+            request = map(method.parse_request, data)
+        else:
+            request = method.parse_request(data)
+
+        response = stub(request, timeout=timeout)
+
+        if not str(method.type).endswith("stream"):
+            response = iter([response])
+
+        return RpcNativeResponse(channel, response)

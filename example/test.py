@@ -1,6 +1,8 @@
 import os
 import sys
 
+import grpc
+
 try:
     path = os.path.realpath(os.path.abspath(__file__))
     os.chdir(os.path.dirname(path))
@@ -20,58 +22,61 @@ def load_protobuf():
     print()
 
 
-def say_hello():
+def say_hello(name):
     print("-" * 25)
     print("Calling SayHello:")
     rpc_uri = RpcUri(
-        "http://localhost:8080",
+        base_url="http://localhost:8080",
         package="pyease.sample.v1",
         service="Greeter",
         method="SayHello",
     )
     print("uri", "=", rpc_uri)
     with RpcSession.from_file(PROTO_FILE) as session:
-        response = session.request(rpc_uri, {"name": "world"})
-        response.raise_for_status()
+        response = session.request(rpc_uri, {"name": name})
 
     print(response.single["reply"])
 
     print()
-    print("payloads", "=", response.payloads)
-    print("trailer", "=", response.trailer)
-    print("grpc_status", "=", response.grpc_status)
-    print("grpc_message", "=", response.grpc_message)
+    print(response.payloads)
     print("-" * 25)
     print()
 
 
-def lots_of_replies():
+def lots_of_replies(name):
     print("-" * 25)
     print("Calling LotsOfReplies:")
     rpc_uri = RpcUri(
-        "http://localhost:8080",
+        base_url="http://localhost:8080",
         package="pyease.sample.v1",
         service="Greeter",
         method="LotsOfReplies",
     )
     print("uri", "=", rpc_uri)
     with RpcSession.from_file(PROTO_FILE) as session:
-        response = session.request(rpc_uri, {"name": "world"})
-        response.raise_for_status()
+        response = session.request(rpc_uri, {"name": name})
 
     for payload in response.iter_payloads():
         print(payload["reply"])
 
     print()
-    print("payloads", "=", response.payloads)
-    print("trailer", "=", response.trailer)
-    print("grpc_status", "=", response.grpc_status)
-    print("grpc_message", "=", response.grpc_message)
+    print(response.payloads)
     print("-" * 25)
     print()
 
 
 if __name__ == "__main__":
     load_protobuf()
-    say_hello()
-    lots_of_replies()
+
+    say_hello("world")
+    lots_of_replies("world")
+
+    try:
+        say_hello("error")
+    except grpc.RpcError as e:
+        print(e.code(), e.details(), end="\n\n")
+
+    try:
+        lots_of_replies("error")
+    except grpc.RpcError as e:
+        print(e.code(), e.details(), end="\n\n")

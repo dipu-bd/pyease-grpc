@@ -1,7 +1,7 @@
 from urllib.parse import urlparse
 
 
-class RpcUri:
+class RpcUri(object):
     @classmethod
     def parse(cls, url: str) -> "RpcUri":
         """Creates :class:`RpcUri` from an URL
@@ -12,10 +12,12 @@ class RpcUri:
         parsed = urlparse(url)
         url_path, package_path, method = parsed.path.rsplit("/", 3)
         package, service = package_path.rsplit(".", 1)
-        scheme = parsed.scheme or "http"
-        hostname = parsed.hostname or ""
-        url = scheme + "://" + hostname + "/" + url_path
-        return cls(url.rstrip("/"), package, service, method)
+        if not parsed.hostname:
+            raise ValueError("Hostname is required")
+        url = parsed.hostname + "/" + url_path.rstrip("/")
+        if parsed.scheme:
+            url = parsed.scheme + "://" + url
+        return cls(url, package, service, method)
 
     def __init__(
         self,
@@ -24,7 +26,7 @@ class RpcUri:
         service: str,
         method: str,
     ) -> None:
-        """URL initializer for the gRPC call.
+        """URL builder for a gRPC call.
 
         Arguments:
             base_url (str): The base address of the gRPC server. e.g. http://localhost:8080
@@ -40,12 +42,15 @@ class RpcUri:
     def __str__(self) -> str:
         return self.build()
 
+    @property
+    def path(self) -> str:
+        """Returns the path of the gRPC method."""
+        return f"/{self.package}.{self.service}/{self.method}"
+
     def build(self) -> str:
-        """Builds and returns the URL for the gRPC call."""
+        """Builds and returns the URL for the gRPC-Web call."""
         url = self.base_url.rstrip("/")
-        if not any(url.startswith(x) for x in ["http://", "https://"]):
-            url = "http://" + url.lstrip("//")
-        url += "/" + self.package
-        url += "." + self.service
-        url += "/" + self.method
+        if url and url.split("://", 1)[0] not in ["http", "https"]:
+            url = "http://" + url.split("://", 1)[-1]
+        url += self.path
         return url
