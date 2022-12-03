@@ -8,7 +8,7 @@ class RpcTrailer(grpc.RpcError):
 
         status = self._trailer.get("grpc-status", 2)
         if not isinstance(status, int):
-            status = str(status)
+            status = str(status).strip()
             if status.isdigit():
                 status = int(status)
 
