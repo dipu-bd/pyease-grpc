@@ -105,12 +105,21 @@ def message_to_dict(
     float_precision=None,
     use_integers_for_enums=False,
 ) -> dict:
-    return MessageToDict(
-        message,
-        float_precision=float_precision,
-        use_integers_for_enums=use_integers_for_enums,
-        including_default_value_fields=including_defaults,
-    )
+    try:
+        return MessageToDict(
+            message,
+            float_precision=float_precision,
+            use_integers_for_enums=use_integers_for_enums,
+            including_default_value_fields=including_defaults,
+        )
+    except TypeError:
+        return MessageToDict(
+            message,
+            float_precision=float_precision,
+            use_integers_for_enums=use_integers_for_enums,
+            always_print_fields_with_no_presence=including_defaults,
+        )
+
 
 
 def deserialize_message(message_type: Type[Message], data: bytes) -> dict:
