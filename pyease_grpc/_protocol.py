@@ -121,7 +121,6 @@ def message_to_dict(
         )
 
 
-
 def deserialize_message(message_type: Type[Message], data: bytes) -> dict:
     return message_type.FromString(data)
 
