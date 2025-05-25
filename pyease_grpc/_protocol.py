@@ -3,7 +3,7 @@ import os
 import struct
 from typing import Dict, Generator, List, Tuple, Type
 
-from google.protobuf import reflection, symbol_database
+from google.protobuf import reflection, symbol_database, message_factory
 from google.protobuf.descriptor_pb2 import FileDescriptorSet
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
@@ -137,7 +137,10 @@ def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
         for message in proto.message_type:
             name = proto.package + "." + message.name
             md = db.pool.FindMessageTypeByName(name)
-            messages[name] = reflection.MakeClass(md)
+            if hasattr(reflection, 'MakeClass'):
+                messages[name] = reflection.MakeClass(md)
+            else:
+                messages[name] = message_factory.GetMessageClass(md)
     return messages
 
 
