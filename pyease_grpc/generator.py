@@ -10,19 +10,14 @@ from .protobuf import Protobuf
 
 
 def get_args():
-    parser = ArgumentParser(
-        "pyease-grpc", description="Generate descriptor json from a proto file."
-    )
-    parser.add_argument(
-        "-v", "--version", action="version", version="%(prog)s " + __version__
-    )
+    parser = ArgumentParser("pyease-grpc", description="Generate descriptor json from a proto file.")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s " + __version__)
     parser.add_argument(
         "-o",
         "--output",
         metavar="FILE",
         type=str,
-        help="The output file to write the content."
-        " If not provided, the output is dumped to stdout",
+        help="The output file to write the content. If not provided, the output is dumped to stdout",
     )
     parser.add_argument(
         "-I",

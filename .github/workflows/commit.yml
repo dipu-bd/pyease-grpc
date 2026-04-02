@@ -2,6 +2,8 @@ name: Build
 
 on:
   push:
+    workflow_call: {}
+    workflow_dispatch: {}
     branches:
       - master
 
@@ -12,29 +14,29 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+
+      - name: Install Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
+          enable-cache: true
 
       - name: Install dependencies
-        run: |
-          pip install -U pip wheel setuptools
-          pip install -r requirements.txt
+        run: uv sync --frozen --all-groups
 
-      - name: Lint with flake8
+      - name: Lint with Ruff
         run: |
-          pip install flake8
-          flake8 --count --show-source --statistics --max-line-length 120 pyease_grpc
+          uv run ruff check pyease_grpc
+          uv run ruff format --check pyease_grpc
 
       - name: Build wheel package
-        run: python setup.py clean bdist_wheel
+        run: uv build
 
       - name: Install and test package
         run: |
-          pip install dist/*.whl
+          uv pip install dist/*.whl
           mkdir -p github_import_test
           cd github_import_test && python -c 'import pyease_grpc; print(pyease_grpc.__version__)'

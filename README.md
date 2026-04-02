@@ -11,13 +11,27 @@ Easy to use gRPC-web client in python
 
 ### Installation
 
-Install the package using:
+Install the package using pip or [uv](https://docs.astral.sh/uv/):
 
 ```
 $ pip install pyease-grpc
 ```
 
-Run the following to check if it has been installed correctly:
+```
+$ uv pip install pyease-grpc
+```
+
+### Development
+
+From a clone of this repository, create a virtual environment and install the package with dev tools:
+
+```
+$ uv sync --all-groups
+```
+
+Lint and format (same as CI) with `uv run ruff check pyease_grpc` and `uv run ruff format --check pyease_grpc`. Apply formatting with `uv run ruff format pyease_grpc`. Run the CLI with `uv run pyease-grpc --version`. Build wheels with `uv build`.
+
+Run the following to check if the published package has been installed correctly:
 
 ```
 $ pyease-grpc --version

@@ -3,12 +3,12 @@ import os
 import struct
 from typing import Dict, Generator, List, Tuple, Type
 
-from google.protobuf import reflection, symbol_database, message_factory
+from google.protobuf import message_factory, reflection, symbol_database
 from google.protobuf.descriptor_pb2 import FileDescriptorSet
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
 from requests import Response
-from requests.exceptions import InvalidHeader, ContentDecodingError
+from requests.exceptions import ContentDecodingError, InvalidHeader
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +29,7 @@ def _unpack_header(message: bytes) -> Tuple[bool, bool, int]:
     return trailer, compressed, length
 
 
-def wrap_message(
-    message: bytes, trailer: bool = False, compressed: bool = False
-) -> bytes:
+def wrap_message(message: bytes, trailer: bool = False, compressed: bool = False) -> bytes:
     header = _pack_header(trailer, compressed, len(message))
     return header + message
 
@@ -65,15 +63,11 @@ def unwrap_message_stream(
     while not trailer:
         header, content = read_upto(_HEADER_LENGTH, content)
         if len(header) != _HEADER_LENGTH:
-            raise InvalidHeader(
-                f"Expected {_HEADER_LENGTH} bytes, got {len(header)} bytes"
-            )
+            raise InvalidHeader(f"Expected {_HEADER_LENGTH} bytes, got {len(header)} bytes")
         trailer, compressed, length = _unpack_header(header)
         data, content = read_upto(length, content)
         if length != len(data):
-            raise ContentDecodingError(
-                f"Expected {length} bytes, got {len(data)} bytes"
-            )
+            raise ContentDecodingError(f"Expected {length} bytes, got {len(data)} bytes")
         yield data, trailer, compressed
 
 
@@ -137,7 +131,7 @@ def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
         for message in proto.message_type:
             name = proto.package + "." + message.name
             md = db.pool.FindMessageTypeByName(name)
-            if hasattr(reflection, 'MakeClass'):
+            if hasattr(reflection, "MakeClass"):
                 messages[name] = reflection.MakeClass(md)
             else:
                 messages[name] = message_factory.GetMessageClass(md)
@@ -160,10 +154,7 @@ def generate_descriptor(out_file: str, proto_file: str, include_paths: List[str]
     try:
         from grpc_tools import protoc
     except ImportError as e:
-        logger.debug(
-            str(e) + " Run 'pip install grpcio-tools' to install it."
-            " It is required to parse proto files."
-        )
+        logger.debug(str(e) + " Run 'pip install grpcio-tools' to install it. It is required to parse proto files.")
         raise ModuleNotFoundError("Missing package: 'grpcio-tools'") from e
 
     if not os.path.isfile(proto_file):

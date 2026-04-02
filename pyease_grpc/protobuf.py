@@ -65,9 +65,7 @@ class Protobuf(object):
             proto_file = os.path.join(tmp_dir, filename + ".proto")
             with open(proto_file, "w") as f:
                 f.write(proto)
-            return cls.from_file(
-                proto_file, include_paths + [tmp_dir], work_dir=tmp_dir
-            )
+            return cls.from_file(proto_file, include_paths + [tmp_dir], work_dir=tmp_dir)
         finally:
             if work_dir != tmp_dir:
                 shutil.rmtree(tmp_dir, ignore_errors=True)

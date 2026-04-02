@@ -3,73 +3,46 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
   lint:
-    name: Lint & Test
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
-      matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          pip install -U pip wheel setuptools
-          pip install -r requirements.txt
-
-      - name: Lint with flake8
-        run: |
-          pip install flake8
-          flake8 --count --show-source --statistics --max-line-length 120 pyease_grpc
-
-      - name: Build wheel package
-        run: python setup.py clean bdist_wheel
-
-      - name: Install and test package
-        run: |
-          pip install dist/*.whl
-          mkdir -p github_import_test
-          cd github_import_test && python -c 'import pyease_grpc; print(pyease_grpc.__version__)'
+    uses: ./.github/workflows/commit.yml
+    permissions:
+      contents: read
 
   release:
     needs: [lint]
     name: Build & Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # PyPI Trusted Publishing (OIDC) via gh-action-pypi-publish
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
 
-      - name: Install dependencies
-        run: |
-          pip install -U pip wheel setuptools twine
-          pip install -r requirements.txt
+      - name: Install Python 3.12
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+          enable-cache: true
 
       - name: Build package
-        run: python setup.py clean bdist_wheel
+        run: uv build
 
-      - name: Release
+      - name: Release Artifacts
         uses: ncipollo/release-action@v1
         if: startsWith(github.ref, 'refs/tags/')
-        with: # See available options at https://github.com/ncipollo/release-action
+        with:
+          artifacts: 'dist/*.whl'
           allowUpdates: true
           artifactErrorsFailBuild: true
-          artifacts: "dist/*.whl"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish
-        run: python -m twine upload dist/pyease_grpc*.whl
+      - name: PyPI Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: github.repository == 'dipu-bd/pyease-grpc'
         env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-          TWINE_NON_INTERACTIVE: true
+          verbose: true
+          print-hash: true
+          password: ${{ secrets.PYPI_API_TOKEN }}

@@ -1,0 +1,64 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61", "wheel"]
+
+[project]
+authors = [{name = "Sudipto Chandra", email = "dipu.sudipta@gmail.com"}]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Natural Language :: English",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+  "requests>=2.25.0",
+  "protobuf>=3.19.0",
+  "grpcio <= 1.78.0",
+]
+description = "Easy gRPC-web client in python"
+dynamic = ["version"]
+keywords = ["grpc", "protobuf", "grpc-web", "requests"]
+license = {text = "MIT"}
+name = "pyease-grpc"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/dipu-bd/pyease-grpc"
+
+[project.scripts]
+pyease-grpc = "pyease_grpc:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "pyease_grpc.__version__"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
+[dependency-groups]
+dev = [
+  "grpcio-tools <= 1.78.0",
+  "ruff>=0.8",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
