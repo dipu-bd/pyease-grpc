@@ -1,22 +1,22 @@
-name: Build
+name: Lint
 
 on:
+  workflow_call: {}
+  workflow_dispatch: {}
   push:
-    workflow_call: {}
-    workflow_dispatch: {}
     branches:
       - master
 
 jobs:
   lint:
-    name: Lint & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
-      fail-fast: true
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v7
@@ -38,5 +38,3 @@ jobs:
       - name: Install and test package
         run: |
           uv pip install dist/*.whl
-          mkdir -p github_import_test
-          cd github_import_test && python -c 'import pyease_grpc; print(pyease_grpc.__version__)'

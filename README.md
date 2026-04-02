@@ -1,6 +1,6 @@
 # pyease-grpc
 
-[![Build](https://github.com/dipu-bd/pyease-grpc/actions/workflows/commit.yml/badge.svg)](https://github.com/dipu-bd/pyease-grpc/actions/workflows/commit.yml)
+[![Lint](https://github.com/dipu-bd/pyease-grpc/actions/workflows/lint.yml/badge.svg)](https://github.com/dipu-bd/pyease-grpc/actions/workflows/lint.yml)
 [![Release](https://github.com/dipu-bd/pyease-grpc/actions/workflows/release.yml/badge.svg)](https://github.com/dipu-bd/pyease-grpc/actions/workflows/release.yml)
 [![PyPI version](https://img.shields.io/pypi/v/pyease-grpc.svg?logo=python)](https://pypi.org/project/pyease-grpc)
 [![Python version](https://img.shields.io/pypi/pyversions/pyease-grpc.svg)](https://pypi.org/project/pyease-grpc)
