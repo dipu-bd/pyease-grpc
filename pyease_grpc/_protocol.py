@@ -123,11 +123,31 @@ def deserialize_trailer(data: bytes) -> dict:
     return dict([line.split(":", 1) for line in data.decode("utf8").splitlines()])
 
 
+def _strip_extension_brackets(obj: dict):
+    if not isinstance(obj, dict):
+        return obj
+    keys_to_rename = []
+    for key in obj:
+        if key.startswith("[") and key.endswith("]"):
+            keys_to_rename.append(key)
+        elif isinstance(obj.get(key), dict):
+            _strip_extension_brackets(obj[key])
+        elif isinstance(obj.get(key), list):
+            for item in obj[key]:
+                if isinstance(item, dict):
+                    _strip_extension_brackets(item)
+    for old_key in keys_to_rename:
+        new_key = old_key[1:-1]
+        obj[new_key] = obj.pop(old_key)
+    return obj
+
+
 def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
     db = symbol_database.Default()
     messages: Dict[str, Type[Message]] = {}
     for proto in fds.file:
         db.pool.Add(proto)
+    for proto in fds.file:
         for message in proto.message_type:
             name = proto.package + "." + message.name
             md = db.pool.FindMessageTypeByName(name)
@@ -136,6 +156,15 @@ def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
             else:
                 messages[name] = message_factory.GetMessageClass(md)
     return messages
+
+
+def _convert_fds_with_extensions(fds: FileDescriptorSet) -> FileDescriptorSet:
+    from google.protobuf.json_format import MessageToDict
+    db = symbol_database.Default()
+    for proto in fds.file:
+        db.pool.Add(proto)
+    serialized = fds.SerializeToString()
+    return FileDescriptorSet.FromString(serialized)
 
 
 def get_resource_path(package, path):
@@ -156,6 +185,9 @@ def generate_descriptor(out_file: str, proto_file: str, include_paths: List[str]
     except ImportError as e:
         logger.debug(str(e) + " Run 'pip install grpcio-tools' to install it. It is required to parse proto files.")
         raise ModuleNotFoundError("Missing package: 'grpcio-tools'") from e
+
+    import os
+    os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
 
     if not os.path.isfile(proto_file):
         raise FileNotFoundError(proto_file)
