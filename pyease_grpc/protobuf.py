@@ -114,7 +114,10 @@ class Protobuf(object):
 
     def save(self) -> dict:
         """Returns the :class:`FileDescriptorSet` of the current protobuf as JSON"""
-        return _protocol.message_to_dict(self._descriptor)
+        converted_fds = _protocol._convert_fds_with_extensions(self._descriptor)
+        json_output = _protocol.message_to_dict(converted_fds)
+        _protocol._strip_extension_brackets(json_output)
+        return json_output
 
     def save_file(self, file_path: str) -> None:
         """Saves the :class:`FileDescriptorSet` of the current protobuf as JSON to a file
