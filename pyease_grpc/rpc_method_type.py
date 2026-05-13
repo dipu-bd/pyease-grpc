@@ -12,8 +12,6 @@ class MethodType(Enum):
 
 
 def get_method_type(client_streaming: bool, server_streaming: bool) -> MethodType:
-    from .rpc_method import MethodType
-
     if client_streaming and server_streaming:
         return MethodType.stream_stream
     elif client_streaming:

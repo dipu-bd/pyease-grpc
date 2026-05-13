@@ -10,7 +10,7 @@ class RpcUri(object):
             url (str): A gRPC web URL
         """
         parsed = urlparse(url)
-        url_path, package_path, method = parsed.path.rsplit("/", 3)
+        url_path, package_path, method = parsed.path.rsplit("/", 2)
         package, service = package_path.rsplit(".", 1)
         if not parsed.hostname:
             raise ValueError("Hostname is required")

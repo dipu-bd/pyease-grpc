@@ -84,15 +84,6 @@ def parse_message(
     return ParseDict(data, message, ignore_unknown_fields=ignore_unknown)
 
 
-def serialize_message(
-    message_type: Type[Message],
-    data: dict,
-    ignore_unknown=True,
-) -> bytes:
-    message = parse_message(message_type, data, ignore_unknown)
-    return message.SerializeToString()
-
-
 def message_to_dict(
     message: Message,
     including_defaults=True,
@@ -115,7 +106,7 @@ def message_to_dict(
         )
 
 
-def deserialize_message(message_type: Type[Message], data: bytes) -> dict:
+def deserialize_message(message_type: Type[Message], data: bytes) -> Message:
     return message_type.FromString(data)
 
 
@@ -151,7 +142,7 @@ def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
         db.pool.Add(proto)
     for proto in fds.file:
         for message in proto.message_type:
-            name = proto.package + "." + message.name
+            name = f"{proto.package}.{message.name}" if proto.package else message.name
             md = db.pool.FindMessageTypeByName(name)
             if hasattr(reflection, "MakeClass"):
                 messages[name] = reflection.MakeClass(md)
