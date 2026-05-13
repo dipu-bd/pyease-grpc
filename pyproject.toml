@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
   "requests>=2.25.0",
   "protobuf>=3.19.0",
-  "grpcio <= 1.78.0",
+  "grpcio<=1.78.0",
 ]
 description = "Easy gRPC-web client in python"
 dynamic = ["version"]
@@ -49,8 +49,9 @@ exclude = ["tests*"]
 
 [dependency-groups]
 dev = [
-  "grpcio-tools <= 1.78.0",
+  "grpcio-tools<=1.78.0",
   "ruff>=0.8",
+  "types-protobuf>=5.29.0",
 ]
 
 [tool.ruff]

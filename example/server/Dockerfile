@@ -1,8 +1,8 @@
-FROM python:3.8-alpine
+FROM python:3.12-alpine
 
 WORKDIR /app
 
-RUN pip3 install requests>=2.25.0 protobuf>=3.19.0 grpcio-tools
+RUN pip install "requests>=2.25.0" "protobuf>=3.19.0" "grpcio-tools<=1.78.0"
 
 COPY . .
 

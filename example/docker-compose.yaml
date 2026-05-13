@@ -18,7 +18,7 @@ services:
       context: ./envoy
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8586:8080"
       - "9901:9901"
     links:
       - greeter

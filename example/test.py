@@ -26,7 +26,7 @@ def say_hello(name):
     print("-" * 25)
     print("Calling SayHello:")
     rpc_uri = RpcUri(
-        base_url="http://localhost:8080",
+        base_url="http://localhost:8586",
         package="pyease.sample.v1",
         service="Greeter",
         method="SayHello",
@@ -47,7 +47,7 @@ def lots_of_replies(name):
     print("-" * 25)
     print("Calling LotsOfReplies:")
     rpc_uri = RpcUri(
-        base_url="http://localhost:8080",
+        base_url="http://localhost:8586",
         package="pyease.sample.v1",
         service="Greeter",
         method="LotsOfReplies",
