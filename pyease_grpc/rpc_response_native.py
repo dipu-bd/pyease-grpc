@@ -1,7 +1,7 @@
 from typing import Generator, Iterable
 
-import grpc
 from google.protobuf.message import Message
+import grpc
 
 from . import _protocol
 from .rpc_response import RpcResponse

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
+from argparse import ArgumentParser
 import json
 import os
 import sys
-from argparse import ArgumentParser
 
 from . import __version__
 from .protobuf import Protobuf
