@@ -31,6 +31,7 @@ jobs:
         run: |
           uv run ruff check pyease_grpc
           uv run ruff format --check pyease_grpc
+          uv run pytest
 
       - name: Build wheel package
         run: uv build

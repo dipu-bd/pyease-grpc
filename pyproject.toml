@@ -50,9 +50,13 @@ exclude = ["tests*"]
 [dependency-groups]
 dev = [
   "grpcio-tools<=1.78.0",
+  "pytest>=8.0",
   "ruff>=0.8",
   "types-protobuf>=5.29.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 120
@@ -63,3 +67,8 @@ select = ["E", "F", "W", "I"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+known-first-party = ["pyease__grpc"]

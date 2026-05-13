@@ -14,7 +14,7 @@ class RpcUri(object):
         package, service = package_path.rsplit(".", 1)
         if not parsed.hostname:
             raise ValueError("Hostname is required")
-        url = parsed.hostname + "/" + url_path.rstrip("/")
+        url = parsed.netloc + url_path.rstrip("/")
         if parsed.scheme:
             url = parsed.scheme + "://" + url
         return cls(url, package, service, method)

@@ -133,13 +133,20 @@ def _strip_extension_brackets(obj: dict):
     return obj
 
 
+def _add_to_pool(db, proto) -> None:
+    try:
+        db.pool.Add(proto)
+    except TypeError:
+        pass  # already registered with identical content
+
+
 def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
     db = symbol_database.Default()
     messages: Dict[str, Type[Message]] = {}
     # Register all protos before any lookup so
     # cross-file type references resolve correctly.
     for proto in fds.file:
-        db.pool.Add(proto)
+        _add_to_pool(db, proto)
     for proto in fds.file:
         for message in proto.message_type:
             name = f"{proto.package}.{message.name}" if proto.package else message.name
@@ -155,7 +162,7 @@ def _ensure_fds_in_pool(fds: FileDescriptorSet) -> None:
     # Register protos in the pool so MessageToDict resolves extension types correctly.
     db = symbol_database.Default()
     for proto in fds.file:
-        db.pool.Add(proto)
+        _add_to_pool(db, proto)
 
 
 def get_resource_path(package, path):
