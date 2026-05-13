@@ -1,4 +1,4 @@
-__version__ = "1.7.4"
+__version__ = "1.8.0"
 
 from .generator import main
 from .protobuf import Protobuf
