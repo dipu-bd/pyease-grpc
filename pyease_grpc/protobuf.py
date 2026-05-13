@@ -21,7 +21,7 @@ class Protobuf(object):
     def from_file(
         cls,
         proto_file: str,
-        include_paths: List[str] = [],
+        include_paths: Optional[List[str]] = None,
         work_dir: Optional[str] = None,
     ):
         """Creates a :class:`Protobuf` from protobuf file.
@@ -36,7 +36,7 @@ class Protobuf(object):
         os.makedirs(tmp_dir, exist_ok=True)
         try:
             out_file = os.path.join(tmp_dir, "descriptor.bin")
-            res = _protocol.generate_descriptor(out_file, proto_file, include_paths)
+            res = _protocol.generate_descriptor(out_file, proto_file, include_paths or [])
             with open(res, "rb") as f:
                 return cls(FileDescriptorSet.FromString(f.read()))
         finally:
@@ -48,7 +48,7 @@ class Protobuf(object):
         cls,
         proto: str,
         filename: str = "pyease",
-        include_paths: List[str] = [],
+        include_paths: Optional[List[str]] = None,
         work_dir: Optional[str] = None,
     ):
         """Creates a :class:`Protobuf` from protobuf definitions.
@@ -65,7 +65,7 @@ class Protobuf(object):
             proto_file = os.path.join(tmp_dir, filename + ".proto")
             with open(proto_file, "w") as f:
                 f.write(proto)
-            return cls.from_file(proto_file, include_paths + [tmp_dir], work_dir=tmp_dir)
+            return cls.from_file(proto_file, (include_paths or []) + [tmp_dir], work_dir=tmp_dir)
         finally:
             if work_dir != tmp_dir:
                 shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -114,8 +114,8 @@ class Protobuf(object):
 
     def save(self) -> dict:
         """Returns the :class:`FileDescriptorSet` of the current protobuf as JSON"""
-        converted_fds = _protocol._convert_fds_with_extensions(self._descriptor)
-        json_output = _protocol.message_to_dict(converted_fds)
+        _protocol._ensure_fds_in_pool(self._descriptor)
+        json_output = _protocol.message_to_dict(self._descriptor)
         _protocol._strip_extension_brackets(json_output)
         return json_output
 

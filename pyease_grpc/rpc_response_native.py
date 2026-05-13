@@ -16,10 +16,16 @@ class RpcNativeResponse(RpcResponse):
         super().__init__()
         self.channel = channel
         self._response_iterator = response_iter
-        self._payload_consumed = False
+        self._payloads_ready = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
 
     def iter_payloads(self) -> Generator[dict, None, None]:
-        if self._payload_consumed:
+        if self._payloads_ready:
             yield from self._payloads
             return
 
@@ -32,7 +38,7 @@ class RpcNativeResponse(RpcResponse):
             yield payload
 
         self._payloads = payloads
-        self._payload_consumed = True
+        self._payloads_ready = True
 
     def close(self):
         """Closes the Channel and releases all resources held by it."""

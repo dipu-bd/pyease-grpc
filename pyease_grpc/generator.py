@@ -46,6 +46,7 @@ def main():
         print(output)
         sys.exit(0)
 
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    output_dir = os.path.dirname(os.path.abspath(args.output))
+    os.makedirs(output_dir, exist_ok=True)
     with open(args.output, "w") as f:
         f.write(output)

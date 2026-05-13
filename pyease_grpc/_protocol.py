@@ -1,7 +1,7 @@
 import logging
 import os
 import struct
-from typing import Dict, Generator, List, Tuple, Type
+from typing import Dict, Generator, List, Optional, Tuple, Type
 
 from google.protobuf import message_factory, reflection, symbol_database
 from google.protobuf.descriptor_pb2 import FileDescriptorSet
@@ -151,13 +151,11 @@ def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
     return messages
 
 
-def _convert_fds_with_extensions(fds: FileDescriptorSet) -> FileDescriptorSet:
-    # Register protos in the pool so MessageToDict
-    # resolves extension types correctly.
+def _ensure_fds_in_pool(fds: FileDescriptorSet) -> None:
+    # Register protos in the pool so MessageToDict resolves extension types correctly.
     db = symbol_database.Default()
     for proto in fds.file:
         db.pool.Add(proto)
-    return fds
 
 
 def get_resource_path(package, path):
@@ -172,7 +170,7 @@ def get_resource_path(package, path):
         return os.path.abspath(str(files / path))
 
 
-def generate_descriptor(out_file: str, proto_file: str, include_paths: List[str] = []):
+def generate_descriptor(out_file: str, proto_file: str, include_paths: Optional[List[str]] = None):
     try:
         from grpc_tools import protoc
     except ImportError as e:

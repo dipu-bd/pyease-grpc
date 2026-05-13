@@ -5,17 +5,17 @@ from typing import Generator, List, Optional
 class RpcResponse(object):
     def __init__(
         self,
-        payloads: List[dict] = [],
+        payloads: Optional[List[dict]] = None,
     ) -> None:
-        self._payloads = payloads
-        self._payload_consumed = True
+        self._payloads: List[dict] = payloads if payloads is not None else []
+        self._payloads_ready = True
 
     def iter_payloads(self) -> Generator[dict, None, None]:
         yield from self._payloads
 
     @property
-    def payloads(self):
-        if not self._payload_consumed:
+    def payloads(self) -> List[dict]:
+        if not self._payloads_ready:
             deque(self.iter_payloads(), maxlen=0)
         return self._payloads
 

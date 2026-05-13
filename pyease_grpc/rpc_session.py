@@ -8,6 +8,8 @@ from requests.structures import CaseInsensitiveDict
 
 from . import _protocol
 from .protobuf import Protobuf
+from .rpc_method import RpcMethod
+from .rpc_method_type import MethodType
 from .rpc_response_native import RpcNativeResponse
 from .rpc_response_web import RpcWebResponse
 from .rpc_trailer import RpcTrailer
@@ -21,7 +23,7 @@ class RpcSession(object):
     def from_file(
         cls,
         proto_file: str,
-        include_paths: List[str] = [],
+        include_paths: Optional[List[str]] = None,
         work_dir: Optional[str] = None,
     ):
         """Make a :class:`RpcSession` from a proto file.
@@ -68,6 +70,17 @@ class RpcSession(object):
         """The internal session used for the gRPC-Web request"""
         return self._session
 
+    def _resolve_method(self, uri: RpcUri) -> RpcMethod:
+        if uri.service not in self._proto.services:
+            raise ValueError("No such service: " + uri.service)
+        service = self._proto.services[uri.service]
+        if uri.method not in service:
+            raise ValueError("No such method: " + uri.method)
+        method = service[uri.method]
+        if uri.package != method.package:
+            raise ValueError("Invalid package name: " + uri.package)
+        return method
+
     def request(
         self,
         uri: Union[str, RpcUri],
@@ -106,20 +119,9 @@ class RpcSession(object):
         Returns:
             An :class:`RpcWebResponse` with one or more payloads.
         """
-        # Prepare protobuf method
         if isinstance(uri, str):
             uri = RpcUri.parse(uri)
-
-        if uri.service not in self._proto.services:
-            raise ValueError("No such service: " + uri.service)
-        service = self._proto.services[uri.service]
-
-        if uri.method not in service:
-            raise ValueError("No such method: " + uri.method)
-        method = service[uri.method]
-
-        if uri.package != method.package:
-            raise ValueError("Invalid package name: " + uri.package)
+        method = self._resolve_method(uri)
 
         # Prepare request headers
         headers = CaseInsensitiveDict(headers or {})
@@ -175,20 +177,9 @@ class RpcSession(object):
         Returns:
             An :class:`RpcNativeResponse` with one or more payloads.
         """
-        # Prepare protobuf method
         if isinstance(uri, str):
             uri = RpcUri.parse(uri)
-
-        if uri.service not in self._proto.services:
-            raise ValueError("No such service: " + uri.service)
-        service = self._proto.services[uri.service]
-
-        if uri.method not in service:
-            raise ValueError("No such method: " + uri.method)
-        method = service[uri.method]
-
-        if uri.package != method.package:
-            raise ValueError("Invalid package name: " + uri.package)
+        method = self._resolve_method(uri)
 
         # Make caller from channel
         if not channel:
@@ -204,14 +195,17 @@ class RpcSession(object):
             response_deserializer=method.response.FromString,
         )
 
-        if str(method.type).startswith("stream"):
+        client_streams = method.type in (MethodType.stream_unary, MethodType.stream_stream)
+        server_streams = method.type in (MethodType.unary_stream, MethodType.stream_stream)
+
+        if client_streams:
             request = map(method.parse_request, data)
         else:
             request = method.parse_request(data)
 
         response = stub(request, timeout=timeout)
 
-        if not str(method.type).endswith("stream"):
+        if not server_streams:
             response = iter([response])
 
         return RpcNativeResponse(channel, response)

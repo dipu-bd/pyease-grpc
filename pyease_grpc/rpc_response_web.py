@@ -13,15 +13,15 @@ class RpcWebResponse(RpcResponse):
         self.method = method
         self.response = response
         self.raw = response.raw
-        self._payload_consumed = False
+        self._payloads_ready = False
 
     def iter_payloads(self) -> Generator[dict, None, None]:
         if self.response.status_code >= 400:
-            self._payload_consumed = True
             self._payloads = []
+            self._payloads_ready = True
             return
 
-        if self._payload_consumed:
+        if self._payloads_ready:
             yield from self._payloads
             return
 
@@ -40,7 +40,7 @@ class RpcWebResponse(RpcResponse):
             yield payload
 
         self._payloads = payloads
-        self._payload_consumed = True
+        self._payloads_ready = True
 
     @property
     def headers(self) -> dict:
