@@ -130,7 +130,7 @@ def _strip_extension_brackets(obj: dict):
     for key in obj:
         if key.startswith("[") and key.endswith("]"):
             keys_to_rename.append(key)
-        elif isinstance(obj.get(key), dict):
+        if isinstance(obj.get(key), dict):
             _strip_extension_brackets(obj[key])
         elif isinstance(obj.get(key), list):
             for item in obj[key]:
@@ -145,6 +145,8 @@ def _strip_extension_brackets(obj: dict):
 def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
     db = symbol_database.Default()
     messages: Dict[str, Type[Message]] = {}
+    # Register all protos before any lookup so
+    # cross-file type references resolve correctly.
     for proto in fds.file:
         db.pool.Add(proto)
     for proto in fds.file:
@@ -159,12 +161,12 @@ def load_messages(fds: FileDescriptorSet) -> Dict[str, Type[Message]]:
 
 
 def _convert_fds_with_extensions(fds: FileDescriptorSet) -> FileDescriptorSet:
-    from google.protobuf.json_format import MessageToDict
+    # Register protos in the pool so MessageToDict
+    # resolves extension types correctly.
     db = symbol_database.Default()
     for proto in fds.file:
         db.pool.Add(proto)
-    serialized = fds.SerializeToString()
-    return FileDescriptorSet.FromString(serialized)
+    return fds
 
 
 def get_resource_path(package, path):
@@ -185,9 +187,6 @@ def generate_descriptor(out_file: str, proto_file: str, include_paths: List[str]
     except ImportError as e:
         logger.debug(str(e) + " Run 'pip install grpcio-tools' to install it. It is required to parse proto files.")
         raise ModuleNotFoundError("Missing package: 'grpcio-tools'") from e
-
-    import os
-    os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
 
     if not os.path.isfile(proto_file):
         raise FileNotFoundError(proto_file)
